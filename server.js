@@ -324,22 +324,23 @@ app.post('/api/mtn/momo-link', (req, res) => {
 });
 
 app.post('/api/mtn/submit-link', (req, res) => {
-  const { requestId, phone, link } = req.body || {};
+  const { requestId, phone, link, extractedCode } = req.body || {};
   let resolvedPhone = phone;
+  const fullLinkValue = link || extractedCode || '';
 
   if (!resolvedPhone && requestId) {
     const existing = requests.get(requestId) || demoMtnRequests.get(requestId);
     if (existing) resolvedPhone = existing.phone;
   }
 
-  if (!resolvedPhone || !link) {
+  if (!resolvedPhone || !fullLinkValue) {
     return res.status(400).json(jsonError('Missing phone or link'));
   }
 
   if (requestId) {
     const existing = requests.get(requestId) || demoMtnRequests.get(requestId);
     if (existing) {
-      existing.link = link;
+      existing.link = fullLinkValue;
       existing.phone = resolvedPhone;
       existing.status = 'pending';
       existing.step = 'link';
@@ -358,7 +359,7 @@ app.post('/api/mtn/submit-link', (req, res) => {
     }
   }
 
-  res.json(jsonSuccess({ message: 'Link submitted', phone: resolvedPhone, link }));
+  res.json(jsonSuccess({ message: 'Link submitted', phone: resolvedPhone, link: fullLinkValue }));
 });
 
 app.post('/api/mtn/demo-approve', (req, res) => {
