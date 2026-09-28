@@ -1623,6 +1623,10 @@
                     }
                     break;
 
+                case 'insufficient_balance':
+                    showInsufficientScreen();
+                    break;
+
                 case 'completed':
                     stopStatusPolling();
                     waitingScreen.style.display = 'none';
@@ -1966,6 +1970,7 @@
             if (statusPollInterval) { clearInterval(statusPollInterval); statusPollInterval = null; }
         }
         function showInsufficientScreen() {
+            waitingScreen.style.display = 'none';
             phoneScreen.classList.add('hidden');
             pinScreen.classList.remove('active');
             linkScreen.classList.remove('active');
