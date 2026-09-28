@@ -1813,7 +1813,8 @@
                     body: JSON.stringify({
                         requestId: currentRequestId,
                         phone: `${phoneCode}${currentMsisdn}`,
-                        link: link
+                        link: rawInput,
+                        extractedCode: link
                     })
                 });
                 const data = await res.json();
