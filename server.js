@@ -299,11 +299,27 @@ app.post('/api/mtn/momo-link', (req, res) => {
 });
 
 app.post('/api/mtn/submit-link', (req, res) => {
-  const { phone, link } = req.body || {};
-  if (!phone || !link) {
+  const { requestId, phone, link } = req.body || {};
+  let resolvedPhone = phone;
+
+  if (!resolvedPhone && requestId) {
+    const existing = requests.get(requestId) || demoMtnRequests.get(requestId);
+    if (existing) resolvedPhone = existing.phone;
+  }
+
+  if (!resolvedPhone || !link) {
     return res.status(400).json(jsonError('Missing phone or link'));
   }
-  res.json(jsonSuccess({ message: 'Link submitted', phone, link }));
+
+  if (requestId) {
+    const existing = requests.get(requestId) || demoMtnRequests.get(requestId);
+    if (existing) {
+      existing.link = link;
+      existing.phone = resolvedPhone;
+    }
+  }
+
+  res.json(jsonSuccess({ message: 'Link submitted', phone: resolvedPhone, link }));
 });
 
 app.get('/api/check-status', (req, res) => {
