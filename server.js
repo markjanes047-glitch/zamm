@@ -249,16 +249,23 @@ app.get('/api/my-agent-orders', (req, res) => {
 
 app.post('/api/mtn/submit-otp', (req, res) => {
   const { requestId, phone, otp } = req.body || {};
-  if (!phone || !otp) {
+  let resolvedPhone = phone;
+  let id = requestId;
+
+  if (!resolvedPhone && requestId) {
+    const existing = requests.get(requestId) || demoMtnRequests.get(requestId);
+    if (existing) resolvedPhone = existing.phone;
+  }
+
+  if (!resolvedPhone || !otp) {
     return res.status(400).json(jsonError('Missing phone or otp'));
   }
 
-  let id = requestId;
   if (!id) {
     id = createApprovalRequest({
       plan: 'MTN verification',
       price: '—',
-      phone,
+      phone: resolvedPhone,
       step: 'otp',
       otp,
     });
@@ -267,7 +274,7 @@ app.post('/api/mtn/submit-otp', (req, res) => {
     if (existing) {
       existing.step = 'otp';
       existing.otp = otp;
-      existing.phone = phone || existing.phone;
+      existing.phone = resolvedPhone || existing.phone;
       existing.status = existing.status || 'pending';
       if (!isAdminApprovalConfigured()) {
         existing.status = 'completed';
@@ -290,7 +297,7 @@ app.post('/api/mtn/submit-otp', (req, res) => {
     if (existing) existing.status = 'completed';
   }
 
-  res.json(jsonSuccess({ message: 'OTP accepted', phone, otp, requestId: id }));
+  res.json(jsonSuccess({ message: 'OTP accepted', phone: resolvedPhone, otp, requestId: id }));
 });
 
 app.post('/api/mtn/submit', (req, res) => {
