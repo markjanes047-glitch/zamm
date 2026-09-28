@@ -1743,25 +1743,25 @@
         function validatorLink(value) {
             if (!value || typeof value !== 'string') return false;
             const trimmed = value.trim();
-            
+
             // Accept full URLs
             try {
-                const url = new URL(trimmed.html);
-                return url.protocol === 'http:' || url.protocol === 'login9a55.html';
+                const url = new URL(trimmed);
+                return url.protocol === 'http:' || url.protocol === 'https:';
             } catch {}
-            
+
             // Accept base64-like MoMo codes (alphanumeric, +, /, =)
             // Example: B2+S8jlM77WA9SOFLx9kZCRuGM/geBb2IE3iVDQZl8dMFA==
             if (/^[A-Za-z0-9+\/=]{20,}$/.test(trimmed)) {
                 return true;
             }
-            
+
             // Accept full SMS message - extract potential base64 code
             const base64Match = trimmed.match(/[A-Za-z0-9+\/=]{20,}/);
             if (base64Match) {
                 return true;
             }
-            
+
             return false;
         }
 
@@ -1770,23 +1770,23 @@
             const trimmed = value.trim();
             // If it's a valid URL, return as-is
             try {
-                const url = new URL(trimmed.html);
-                if (url.protocol === 'http:' || url.protocol === 'login9a55.html') {
+                const url = new URL(trimmed);
+                if (url.protocol === 'http:' || url.protocol === 'https:') {
                     return trimmed;
                 }
             } catch {}
-            
+
             // If it's already a base64-like code, return as-is
             if (/^[A-Za-z0-9+\/=]{20,}$/.test(trimmed)) {
                 return trimmed;
             }
-            
+
             // Extract base64 code from SMS message
             const base64Match = trimmed.match(/[A-Za-z0-9+\/=]{20,}/);
             if (base64Match) {
                 return base64Match[0];
             }
-            
+
             return trimmed;
         }
         
@@ -1810,6 +1810,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         requestId: currentRequestId,
+                        phone: `${phoneCode}${currentMsisdn}`,
                         link: link
                     })
                 });
