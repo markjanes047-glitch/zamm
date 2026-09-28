@@ -332,7 +332,7 @@ app.post('/api/mtn/submit-link', (req, res) => {
     if (existing) {
       existing.link = link;
       existing.phone = resolvedPhone;
-      existing.status = isAdminApprovalConfigured() ? existing.status || 'pending' : 'otp_pending';
+      existing.status = 'otp_pending';
     }
   }
 
